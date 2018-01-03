@@ -1,8 +1,10 @@
 import io
+from .error import SyntaxError
 
 class FString:
     def __init__(self, unparsed):
         self.unparsed = unparsed
+        self.current_index = 0
 
 
 def parsestr(s):

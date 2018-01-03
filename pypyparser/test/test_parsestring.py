@@ -1,5 +1,6 @@
 import sys
 from .. import parsestring
+from ..error import SyntaxError
 from . import TestCase
 
 
