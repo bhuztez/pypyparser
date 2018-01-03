@@ -48,11 +48,10 @@ class TestParsetring(TestCase):
         self.parse_and_compare("'''hello\\u0842 world'''",
                                'hello\u0842 world')
 
-        # s = "u'\x81'"
-        # s = s.decode("koi8-u").encode("utf8")[1:]
-        # w_ret = parsestring.parsestr(self.space, 'koi8-u', s)
-        # ret = space.unwrap(w_ret)
-        # assert ret == eval("# -*- coding: koi8-u -*-\nu'\x81'")
+        s = b"u'\x81'"
+        s = s.decode("koi8-u")[1:]
+        ret = parsestring.parsestr(s)
+        self.assertEqual(ret, eval(b"# -*- coding: koi8-u -*-\nu'\x81'"))
 
     def test_unicode_pep414(self):
         for s in ['hello world', 'hello\n world']:
@@ -79,13 +78,11 @@ class TestParsetring(TestCase):
         b = "b'''hello'''"
         self.assertEqual(parsestring.parsestr(b), b"hello")
 
-    # def test_simple_enc_roundtrip(self):
-    #     space = self.space
-    #     s = "'\x81\\t'"
-    #     s = s.decode("koi8-u").encode("utf8")
-    #     w_ret = parsestring.parsestr(self.space, 'koi8-u', s)
-    #     ret = space.unwrap(w_ret)
-    #     assert ret == eval("# -*- coding: koi8-u -*-\nu'\x81\\t'")
+    def test_simple_enc_roundtrip(self):
+        s = b"'\x81\\t'"
+        s = s.decode("koi8-u")
+        ret = parsestring.parsestr(s)
+        self.assertEqual(ret, eval(b"# -*- coding: koi8-u -*-\nu'\x81\\t'"))
 
     def test_multiline_unicode_strings_with_backslash(self):
         s = '"""' + '\\' + '\n"""'
@@ -96,15 +93,3 @@ class TestParsetring(TestCase):
         input = ["'", 'x', ' ', chr(0xc3), chr(0xa9), ' ', chr(92), 'n', "'"]
         w_ret = parsestring.parsestr(''.join(input))
         self.assertEqual(w_ret, ''.join(expected))
-
-    # def test_wide_unicode_in_source(self):
-    #     self.parse_and_compare('"\xf0\x9f\x92\x8b"',
-    #                            chr(0x1f48b))
-
-    # def test_decode_unicode_utf8(self):
-    #     buf = parsestring.decode_unicode_utf8(self.space,
-    #                                           'u"\xf0\x9f\x92\x8b"', 2, 6)
-    #     if sys.maxunicode == 65535:
-    #         assert buf == r"\U0000d83d\U0000dc8b"
-    #     else:
-    #         assert buf == r"\U0001f48b"
