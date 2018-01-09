@@ -1,6 +1,8 @@
 from . import stdlib___future__ as future
+from .pytoken import Token
 
-class FutureFlags(object):
+
+class FutureFlags:
 
     def __init__(self, version):
         compiler_flags = 0
@@ -52,32 +54,28 @@ class TokenIterator:
             return False
 
     def skip_name(self, name):
-        from . import pygram
-        if self.tok[0] == pygram.tokens.NAME and self.tok[1] == name:
+        if self.tok[0] == Token.NAME.value and self.tok[1] == name:
             self.next()
             return True
         else:
             return False
 
     def next_feature_name(self):
-        from . import pygram
-        if self.tok[0] == pygram.tokens.NAME:
+        if self.tok[0] == Token.NAME.value:
             name = self.tok[1]
             self.next()
             if self.skip_name("as"):
-                self.skip(pygram.tokens.NAME)
+                self.skip(Token.NAME.value)
             return name
         else:
             return ''
 
     def skip_newlines(self):
-        from . import pygram
-        while self.skip(pygram.tokens.NEWLINE):
+        while self.skip(Token.NEWLINE.value):
             pass
 
 
 def add_future_flags(future_flags, tokens):
-    from . import pygram
     it = TokenIterator(tokens)
     result = 0
     last_position = (0, 0)
@@ -88,23 +86,23 @@ def add_future_flags(future_flags, tokens):
     # the real parsing done afterwards to give errors.
     it.skip_newlines()
     it.skip_name("r") or it.skip_name("u") or it.skip_name("ru")
-    if it.skip(pygram.tokens.STRING):
+    if it.skip(Token.STRING.value):
         it.skip_newlines()
 
     while (it.skip_name("from") and
            it.skip_name("__future__") and
            it.skip_name("import")):
-        it.skip(pygram.tokens.LPAR)    # optionally
+        it.skip(Token.LPAR.value)    # optionally
         # return in 'last_position' any line-column pair that points
         # somewhere inside the last __future__ import statement
         # (at the start would be fine too, but it's easier to grab a
         # random position inside)
         last_position = (it.tok[2], it.tok[3])
         result |= future_flags.get_compiler_feature(it.next_feature_name())
-        while it.skip(pygram.tokens.COMMA):
+        while it.skip(Token.COMMA.value):
             result |= future_flags.get_compiler_feature(it.next_feature_name())
-        it.skip(pygram.tokens.RPAR)    # optionally
-        it.skip(pygram.tokens.SEMI)    # optionally
+        it.skip(Token.RPAR.value)    # optionally
+        it.skip(Token.SEMI.value)    # optionally
         it.skip_newlines()
 
     # remove the flags that were specified but are anyway mandatory

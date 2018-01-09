@@ -18,7 +18,7 @@ class PgenError(Exception):
         self.location = location
 
 
-class NFA(object):
+class NFA:
 
     def __init__(self):
         self.arcs = []
@@ -35,7 +35,7 @@ class NFA(object):
                 state.find_unlabeled_states(into)
 
 
-class DFA(object):
+class DFA:
 
     def __init__(self, nfa_set, final_state):
         self.nfas = nfa_set
@@ -114,7 +114,7 @@ def simplify_dfa(dfa):
                     break
 
 
-class ParserGenerator(object):
+class ParserGenerator:
     """NOT_RPYTHON"""
 
     def __init__(self, grammar_source):

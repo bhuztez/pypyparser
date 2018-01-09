@@ -1,4 +1,4 @@
-# from pypy.interpreter.error import OperationError
+from .pytoken import Token
 from . import future, parser, pytokenizer, pygram, error, consts
 
 
@@ -47,7 +47,7 @@ def _check_line_for_encoding(line):
     return pytokenizer.match_encoding_declaration(line[i:]), True
 
 
-class CompileInfo(object):
+class CompileInfo:
     """Stores information about the source being compiled.
 
     * filename: The filename of the source.
@@ -168,14 +168,14 @@ class PythonParser(parser.Parser):
 
                 if compile_info.mode == 'single':
                     for tp, value, lineno, column, line in tokens_stream:
-                        if tp == pygram.tokens.ENDMARKER:
+                        if tp == Token.ENDMARKER.value:
                             break
-                        if tp == pygram.tokens.NEWLINE:
+                        if tp == Token.NEWLINE.value:
                             continue
 
-                        if tp == pygram.tokens.COMMENT:
+                        if tp == Token.COMMENT.value:
                             for tp, _, _, _, _ in tokens_stream:
-                                if tp == pygram.tokens.NEWLINE:
+                                if tp == Token.NEWLINE.value:
                                     break
                         else:
                             new_err = error.SyntaxError
@@ -194,9 +194,9 @@ class PythonParser(parser.Parser):
                 # Catch parse errors, pretty them up and reraise them as a
                 # SyntaxError.
                 new_err = error.IndentationError
-                if tp == pygram.tokens.INDENT:
+                if tp == Token.INDENT.value:
                     msg = "unexpected indent"
-                elif e.expected == pygram.tokens.INDENT:
+                elif e.expected == Token.INDENT.value:
                     msg = "expected an indented block"
                 else:
                     new_err = error.SyntaxError

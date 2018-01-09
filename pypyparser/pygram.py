@@ -2,31 +2,21 @@ import os
 from . import parser, pytoken, metaparser
 
 class PythonGrammar(parser.Grammar):
-
-    KEYWORD_TOKEN = pytoken.python_tokens["NAME"]
-    TOKENS = pytoken.python_tokens
-    OPERATOR_MAP = pytoken.python_opmap
+    KEYWORD_TOKEN = pytoken.Token.NAME.value
+    TOKENS = {k:v.value for k,v in pytoken.Token.__members__.items()}
+    OPERATOR_MAP = pytoken.OPMAP
 
 def _get_python_grammar():
     here = os.path.dirname(__file__)
-    fp = open(os.path.join(here, "data", "Grammar3.5"))
-    try:
+    with open(os.path.join(here, "data", "Grammar3.5")) as fp:
         gram_source = fp.read()
-    finally:
-        fp.close()
     pgen = metaparser.ParserGenerator(gram_source)
     return pgen.build_grammar(PythonGrammar)
 
-
 python_grammar = _get_python_grammar()
 
-class _Tokens(object):
-    pass
-for tok_name, idx in pytoken.python_tokens.items():
-    setattr(_Tokens, tok_name, idx)
-tokens = _Tokens()
 
-class _Symbols(object):
+class _Symbols:
     pass
 rev_lookup = {}
 for sym_name, idx in python_grammar.symbol_ids.items():
@@ -35,4 +25,4 @@ for sym_name, idx in python_grammar.symbol_ids.items():
 syms = _Symbols()
 syms._rev_lookup = rev_lookup # for debugging
 
-del _get_python_grammar, _Tokens, tok_name, sym_name, idx
+del _get_python_grammar, sym_name, idx

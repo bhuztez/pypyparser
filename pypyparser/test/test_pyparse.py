@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from .. import pyparse
-from ..pygram import syms, tokens
+from ..pygram import syms
 from ..error import SyntaxError, IndentationError, TabError
 from .. import consts
 from . import TestCase

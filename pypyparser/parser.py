@@ -3,7 +3,7 @@ A CPython inspired RPython parser.
 """
 
 
-class Grammar(object):
+class Grammar:
     """
     Base Grammar object.
 
@@ -42,7 +42,7 @@ class Grammar(object):
         return True
 
 
-class Node(object):
+class Node:
 
     __slots__ = ("type", )
 
@@ -181,7 +181,7 @@ class ParseError(Exception):
         return "ParserError(%s, %r)" % (self.token_type, self.value)
 
 
-class Parser(object):
+class Parser:
 
     def __init__(self, grammar):
         self.grammar = grammar
