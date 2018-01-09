@@ -10,8 +10,6 @@ from . import TestCase
 
 class TestAstBuilder(TestCase):
 
-    def setUp(self):
-        self.parser = pyparse.PythonParser()
 
     def get_ast(self, source, p_mode=None, flags=None):
         if p_mode is None:
@@ -19,7 +17,7 @@ class TestAstBuilder(TestCase):
         if flags is None:
             flags = consts.CO_FUTURE_WITH_STATEMENT
         info = pyparse.CompileInfo("<test>", p_mode, flags)
-        tree = self.parser.parse_source(source.encode() if isinstance(source, str) else source, info)
+        tree = pyparse.parse_source(source.encode() if isinstance(source, str) else source, info)
         ast_node = ast_from_node(tree, info)
         return ast_node
 
@@ -1137,7 +1135,7 @@ class TestAstBuilder(TestCase):
         sentence = u"Die Männer ärgen sich!"
         source = u"# coding: utf-7\nstuff = '%s'" % (sentence,)
         info = pyparse.CompileInfo("<test>", "exec")
-        tree = self.parser.parse_source(source.encode("utf-7"), info)
+        tree = pyparse.parse_source(source.encode("utf-7"), info)
         self.assertEqual(info.encoding, "utf-7")
         s = ast_from_node(tree, info).body[0].value
         self.assertIsInstance(s, ast.Str)
@@ -1147,7 +1145,7 @@ class TestAstBuilder(TestCase):
         japan = u'日本'
         source = u"foo = '%s'" % japan
         info = pyparse.CompileInfo("<test>", "exec")
-        tree = self.parser.parse_source(source.encode("utf-8"), info)
+        tree = pyparse.parse_source(source.encode("utf-8"), info)
         self.assertEqual(info.encoding, "utf-8")
         s = ast_from_node(tree, info).body[0].value
         self.assertIsInstance(s, ast.Str)
@@ -1180,7 +1178,7 @@ class TestAstBuilder(TestCase):
     def test_issue3574(self):
         source = '# coding: Latin-1\nu = "Ç"\n'
         info = pyparse.CompileInfo("<test>", "exec")
-        tree = self.parser.parse_source(source.encode("Latin-1"), info)
+        tree = pyparse.parse_source(source.encode("Latin-1"), info)
         self.assertEqual(info.encoding, "iso-8859-1")
         s = ast_from_node(tree, info).body[0].value
         self.assertIsInstance(s, ast.Str)
@@ -1189,7 +1187,7 @@ class TestAstBuilder(TestCase):
     def test_string_bug(self):
         source = b'# -*- encoding: utf8 -*-\nstuff = "x \xc3\xa9 \\n"\n'
         info = pyparse.CompileInfo("<test>", "exec")
-        tree = self.parser.parse_source(source, info)
+        tree = pyparse.parse_source(source, info)
         self.assertEqual(info.encoding, "utf8")
         s = ast_from_node(tree, info).body[0].value
         self.assertIsInstance(s, ast.Str)

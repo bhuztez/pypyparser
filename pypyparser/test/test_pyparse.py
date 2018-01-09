@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
-from .. import pyparse
-from ..pygram import syms
+from .. import pyparse, parser
 from ..error import SyntaxError, IndentationError, TabError
 from .. import consts
 from . import TestCase
@@ -9,12 +8,12 @@ from . import TestCase
 class TestPythonParserWithoutSpace(TestCase):
 
     def setUp(self):
-        self.parser = pyparse.PythonParser()
+        self.parser = parser.Parser(None)
 
     def parse(self, source, mode="exec", info=None):
         if info is None:
             info = pyparse.CompileInfo("<test>", mode)
-        return self.parser.parse_source(source, info)
+        return pyparse.parse_source(source, info, parser=self.parser)
 
     def test_with_and_as(self):
         self.assertRaises(SyntaxError, self.parse, b"with = 23")
@@ -106,6 +105,8 @@ if 1:
         self.parse(b"this_is\ra_mac\rfile")
 
     def test_mode(self):
+        info = pyparse.CompileInfo("<test>", "exec")
+        syms = info.parser.syms
         self.assertEqual(self.parse(b"x = 43*54").type, syms.file_input)
         tree = self.parse(b"43**54", "eval")
         self.assertEqual(tree.type, syms.eval_input)
@@ -202,10 +203,11 @@ class TestPythonParserWithSpace(TestCase):
     def parse(self, source, mode="exec", info=None):
         if info is None:
             info = pyparse.CompileInfo("<test>", mode)
-        return self.parser.parse_source(source, info)
+        return pyparse.parse_source(source, info)
 
     def test_encoding(self):
         info = pyparse.CompileInfo("<test>", "exec")
+        syms = info.parser.syms
         tree = self.parse(b"""# coding: latin-1
 stuff = "nothing"
 """, info=info)

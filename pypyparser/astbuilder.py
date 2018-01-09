@@ -1,6 +1,5 @@
 from . import ast, consts, misc, fstring
 from .pytoken import Token
-from .pygram import syms
 from .error import SyntaxError
 
 
@@ -47,11 +46,12 @@ class ASTBuilder:
         self.compile_info = compile_info
         self.root_node = n
         self.recursive_parser = recursive_parser
+        self.syms = compile_info.parser.syms
 
     def build_ast(self):
         """Convert an top level parse tree node into an AST mod."""
         n = self.root_node
-        if n.type == syms.file_input:
+        if n.type == self.syms.file_input:
             stmts = []
             for i in range(n.num_children() - 1):
                 stmt = n.get_child(i)
@@ -66,10 +66,10 @@ class ASTBuilder:
                         small_stmt = stmt.get_child(j * 2)
                         stmts.append(self.handle_stmt(small_stmt))
             return ast.Module(stmts)
-        elif n.type == syms.eval_input:
+        elif n.type == self.syms.eval_input:
             body = self.handle_testlist(n.get_child(0))
             return ast.Expression(body)
-        elif n.type == syms.single_input:
+        elif n.type == self.syms.single_input:
             first_child = n.get_child(0)
             if first_child.type == Token.NEWLINE.value:
                 # An empty line.
@@ -92,11 +92,11 @@ class ASTBuilder:
     def number_of_statements(self, n):
         """Compute the number of AST statements contained in a node."""
         stmt_type = n.type
-        if stmt_type == syms.compound_stmt:
+        if stmt_type == self.syms.compound_stmt:
             return 1
-        elif stmt_type == syms.stmt:
+        elif stmt_type == self.syms.stmt:
             return self.number_of_statements(n.get_child(0))
-        elif stmt_type == syms.simple_stmt:
+        elif stmt_type == self.syms.simple_stmt:
             # Divide to remove semi-colons.
             return n.num_children() // 2
         else:
@@ -136,20 +136,20 @@ class ASTBuilder:
     def handle_flow_stmt(self, flow_node):
         first_child = flow_node.get_child(0)
         first_child_type = first_child.type
-        if first_child_type == syms.break_stmt:
+        if first_child_type == self.syms.break_stmt:
             return ast.Break(flow_node.get_lineno(), flow_node.get_column())
-        elif first_child_type == syms.continue_stmt:
+        elif first_child_type == self.syms.continue_stmt:
             return ast.Continue(flow_node.get_lineno(), flow_node.get_column())
-        elif first_child_type == syms.yield_stmt:
+        elif first_child_type == self.syms.yield_stmt:
             yield_expr = self.handle_expr(first_child.get_child(0))
             return ast.Expr(yield_expr, flow_node.get_lineno(), flow_node.get_column())
-        elif first_child_type == syms.return_stmt:
+        elif first_child_type == self.syms.return_stmt:
             if first_child.num_children() == 1:
                 values = None
             else:
                 values = self.handle_testlist(first_child.get_child(1))
             return ast.Return(values, flow_node.get_lineno(), flow_node.get_column())
-        elif first_child_type == syms.raise_stmt:
+        elif first_child_type == self.syms.raise_stmt:
             exc = None
             cause = None
             child_count = first_child.num_children()
@@ -164,7 +164,7 @@ class ASTBuilder:
     def alias_for_import_name(self, import_name, store=True):
         while True:
             import_name_type = import_name.type
-            if import_name_type == syms.import_as_name:
+            if import_name_type == self.syms.import_as_name:
                 name = self.new_identifier(import_name.get_child(0).get_value())
                 if import_name.num_children() == 3:
                     as_name = self.new_identifier(
@@ -174,7 +174,7 @@ class ASTBuilder:
                     as_name = None
                     self.check_forbidden_name(name, import_name.get_child(0))
                 return ast.alias(name, as_name)
-            elif import_name_type == syms.dotted_as_name:
+            elif import_name_type == self.syms.dotted_as_name:
                 if import_name.num_children() == 1:
                     import_name = import_name.get_child(0)
                     continue
@@ -184,7 +184,7 @@ class ASTBuilder:
                 alias.asname = self.new_identifier(asname_node.get_value())
                 self.check_forbidden_name(alias.asname, asname_node)
                 return alias
-            elif import_name_type == syms.dotted_name:
+            elif import_name_type == self.syms.dotted_name:
                 if import_name.num_children() == 1:
                     name = self.new_identifier(import_name.get_child(0).get_value())
                     if store:
@@ -201,12 +201,12 @@ class ASTBuilder:
 
     def handle_import_stmt(self, import_node):
         import_node = import_node.get_child(0)
-        if import_node.type == syms.import_name:
+        if import_node.type == self.syms.import_name:
             dotted_as_names = import_node.get_child(1)
             aliases = [self.alias_for_import_name(dotted_as_names.get_child(i))
                        for i in range(0, dotted_as_names.num_children(), 2)]
             return ast.Import(aliases, import_node.get_lineno(), import_node.get_column())
-        elif import_node.type == syms.import_from:
+        elif import_node.type == self.syms.import_from:
             child_count = import_node.num_children()
             module = None
             modname = None
@@ -215,7 +215,7 @@ class ASTBuilder:
             while i < child_count:
                 child = import_node.get_child(i)
                 child_type = child.type
-                if child_type == syms.dotted_name:
+                if child_type == self.syms.dotted_name:
                     module = self.alias_for_import_name(child, False)
                     i += 1
                     break
@@ -234,7 +234,7 @@ class ASTBuilder:
                 star_import = True
             elif after_import_type == Token.LPAR.value:
                 names_node = import_node.get_child(i + 1)
-            elif after_import_type == syms.import_as_names:
+            elif after_import_type == self.syms.import_as_names:
                 names_node = import_node.get_child(i)
                 if names_node.num_children() % 2 == 0:
                     self.error("trailing comma is only allowed with "
@@ -272,7 +272,7 @@ class ASTBuilder:
 
     def handle_suite(self, suite_node):
         first_child = suite_node.get_child(0)
-        if first_child.type == syms.simple_stmt:
+        if first_child.type == self.syms.simple_stmt:
             end = first_child.num_children() - 1
             if first_child.get_child(end - 1).type == Token.SEMI.value:
                 end -= 1
@@ -489,11 +489,11 @@ class ASTBuilder:
 
     def handle_async_stmt(self, node):
         ch = node.get_child(1)
-        if ch.type == syms.funcdef:
+        if ch.type == self.syms.funcdef:
             return self.handle_funcdef_impl(ch, 1)
-        elif ch.type == syms.with_stmt:
+        elif ch.type == self.syms.with_stmt:
             return self.handle_with_stmt(ch, 1)
-        elif ch.type == syms.for_stmt:
+        elif ch.type == self.syms.for_stmt:
             return self.handle_for_stmt(ch, 1)
         else:
             raise AssertionError("invalid async statement")
@@ -501,11 +501,11 @@ class ASTBuilder:
     def handle_decorated(self, decorated_node):
         decorators = self.handle_decorators(decorated_node.get_child(0))
         definition = decorated_node.get_child(1)
-        if definition.type == syms.funcdef:
+        if definition.type == self.syms.funcdef:
             node = self.handle_funcdef(definition, decorators)
-        elif definition.type == syms.classdef:
+        elif definition.type == self.syms.classdef:
             node = self.handle_classdef(definition, decorators)
-        elif definition.type == syms.async_funcdef:
+        elif definition.type == self.syms.async_funcdef:
             node = self.handle_async_funcdef(definition, decorators)
         else:
             raise AssertionError("unkown decorated")
@@ -542,7 +542,7 @@ class ASTBuilder:
     def handle_arguments(self, arguments_node):
         # This function handles both typedargslist (function definition)
         # and varargslist (lambda definition).
-        if arguments_node.type == syms.parameters:
+        if arguments_node.type == self.syms.parameters:
             if arguments_node.num_children() == 2:
                 return ast.arguments(None, None, None, None, None, None)
             arguments_node = arguments_node.get_child(1)
@@ -558,13 +558,13 @@ class ASTBuilder:
                 i += 1
                 if i < child_count:
                     next_arg_type = arguments_node.get_child(i).type
-                    if (next_arg_type == syms.tfpdef or
-                        next_arg_type == syms.vfpdef):
+                    if (next_arg_type == self.syms.tfpdef or
+                        next_arg_type == self.syms.vfpdef):
                         i += 1
                 break
             if arg_type == Token.DOUBLESTAR.value:
                 break
-            if arg_type == syms.vfpdef or arg_type == syms.tfpdef:
+            if arg_type == self.syms.vfpdef or arg_type == self.syms.tfpdef:
                 n_pos += 1
             if arg_type == Token.EQUAL.value:
                 n_pos_def += 1
@@ -573,7 +573,7 @@ class ASTBuilder:
             arg_type = arguments_node.get_child(i).type
             if arg_type == Token.DOUBLESTAR.value:
                 break
-            if arg_type == syms.vfpdef or arg_type == syms.tfpdef:
+            if arg_type == self.syms.vfpdef or arg_type == self.syms.tfpdef:
                 n_kwdonly += 1
             i += 1
         pos = []
@@ -590,7 +590,7 @@ class ASTBuilder:
         while i < child_count:
             arg = arguments_node.get_child(i)
             arg_type = arg.type
-            if arg_type == syms.tfpdef or arg_type == syms.vfpdef:
+            if arg_type == self.syms.tfpdef or arg_type == self.syms.vfpdef:
                 if i + 1 < child_count and \
                         arguments_node.get_child(i + 1).type == Token.EQUAL.value:
                     default_node = arguments_node.get_child(i + 2)
@@ -617,8 +617,8 @@ class ASTBuilder:
                     i += 3
                     if i < child_count:
                         next_arg_type = arguments_node.get_child(i).type
-                        if (next_arg_type == syms.tfpdef or
-                            next_arg_type == syms.vfpdef):
+                        if (next_arg_type == self.syms.tfpdef or
+                            next_arg_type == self.syms.vfpdef):
                             i = self.handle_keywordonly_args(arguments_node, i,
                                                              kwonly, kwdefaults)
             elif arg_type == Token.DOUBLESTAR.value:
@@ -638,7 +638,7 @@ class ASTBuilder:
         while i < child_count:
             arg = arguments_node.get_child(i)
             arg_type = arg.type
-            if arg_type == syms.vfpdef or arg_type == syms.tfpdef:
+            if arg_type == self.syms.vfpdef or arg_type == self.syms.tfpdef:
                 if (i + 1 < child_count and
                     arguments_node.get_child(i + 1).type == Token.EQUAL.value):
                     expr = self.handle_expr(arguments_node.get_child(i + 2))
@@ -671,53 +671,53 @@ class ASTBuilder:
 
     def handle_stmt(self, stmt):
         stmt_type = stmt.type
-        if stmt_type == syms.stmt:
+        if stmt_type == self.syms.stmt:
             stmt = stmt.get_child(0)
             stmt_type = stmt.type
-        if stmt_type == syms.simple_stmt:
+        if stmt_type == self.syms.simple_stmt:
             stmt = stmt.get_child(0)
             stmt_type = stmt.type
-        if stmt_type == syms.small_stmt:
+        if stmt_type == self.syms.small_stmt:
             stmt = stmt.get_child(0)
             stmt_type = stmt.type
-            if stmt_type == syms.expr_stmt:
+            if stmt_type == self.syms.expr_stmt:
                 return self.handle_expr_stmt(stmt)
-            elif stmt_type == syms.del_stmt:
+            elif stmt_type == self.syms.del_stmt:
                 return self.handle_del_stmt(stmt)
-            elif stmt_type == syms.pass_stmt:
+            elif stmt_type == self.syms.pass_stmt:
                 return ast.Pass(stmt.get_lineno(), stmt.get_column())
-            elif stmt_type == syms.flow_stmt:
+            elif stmt_type == self.syms.flow_stmt:
                 return self.handle_flow_stmt(stmt)
-            elif stmt_type == syms.import_stmt:
+            elif stmt_type == self.syms.import_stmt:
                 return self.handle_import_stmt(stmt)
-            elif stmt_type == syms.global_stmt:
+            elif stmt_type == self.syms.global_stmt:
                 return self.handle_global_stmt(stmt)
-            elif stmt_type == syms.nonlocal_stmt:
+            elif stmt_type == self.syms.nonlocal_stmt:
                 return self.handle_nonlocal_stmt(stmt)
-            elif stmt_type == syms.assert_stmt:
+            elif stmt_type == self.syms.assert_stmt:
                 return self.handle_assert_stmt(stmt)
             else:
                 raise AssertionError("unhandled small statement")
-        elif stmt_type == syms.compound_stmt:
+        elif stmt_type == self.syms.compound_stmt:
             stmt = stmt.get_child(0)
             stmt_type = stmt.type
-            if stmt_type == syms.if_stmt:
+            if stmt_type == self.syms.if_stmt:
                 return self.handle_if_stmt(stmt)
-            elif stmt_type == syms.while_stmt:
+            elif stmt_type == self.syms.while_stmt:
                 return self.handle_while_stmt(stmt)
-            elif stmt_type == syms.for_stmt:
+            elif stmt_type == self.syms.for_stmt:
                 return self.handle_for_stmt(stmt, 0)
-            elif stmt_type == syms.try_stmt:
+            elif stmt_type == self.syms.try_stmt:
                 return self.handle_try_stmt(stmt)
-            elif stmt_type == syms.with_stmt:
+            elif stmt_type == self.syms.with_stmt:
                 return self.handle_with_stmt(stmt, 0)
-            elif stmt_type == syms.funcdef:
+            elif stmt_type == self.syms.funcdef:
                 return self.handle_funcdef(stmt)
-            elif stmt_type == syms.classdef:
+            elif stmt_type == self.syms.classdef:
                 return self.handle_classdef(stmt)
-            elif stmt_type == syms.decorated:
+            elif stmt_type == self.syms.decorated:
                 return self.handle_decorated(stmt)
-            elif stmt_type == syms.async_stmt:
+            elif stmt_type == self.syms.async_stmt:
                 return self.handle_async_stmt(stmt)
             else:
                 raise AssertionError("unhandled compound statement")
@@ -728,13 +728,13 @@ class ASTBuilder:
         if stmt.num_children() == 1:
             expression = self.handle_testlist(stmt.get_child(0))
             return ast.Expr(expression, stmt.get_lineno(), stmt.get_column())
-        elif stmt.get_child(1).type == syms.augassign:
+        elif stmt.get_child(1).type == self.syms.augassign:
             # Augmented assignment.
             target_child = stmt.get_child(0)
             target_expr = self.handle_testlist(target_child)
             self.set_context(target_expr, ast.Store)
             value_child = stmt.get_child(2)
-            if value_child.type == syms.testlist:
+            if value_child.type == self.syms.testlist:
                 value_expr = self.handle_testlist(value_child)
             else:
                 value_expr = self.handle_expr(value_child)
@@ -747,14 +747,14 @@ class ASTBuilder:
             targets = []
             for i in range(0, stmt.num_children() - 2, 2):
                 target_node = stmt.get_child(i)
-                if target_node.type == syms.yield_expr:
+                if target_node.type == self.syms.yield_expr:
                     self.error("assignment to yield expression not possible",
                                target_node)
                 target_expr = self.handle_testlist(target_node)
                 self.set_context(target_expr, ast.Store)
                 targets.append(target_expr)
             value_child = stmt.get_child(-1)
-            if value_child.type == syms.testlist_star_expr:
+            if value_child.type == self.syms.testlist_star_expr:
                 value_expr = self.handle_testlist(value_child)
             else:
                 value_expr = self.handle_expr(value_child)
@@ -775,34 +775,34 @@ class ASTBuilder:
         # Loop until we return something.
         while True:
             expr_node_type = expr_node.type
-            if expr_node_type == syms.test or expr_node_type == syms.test_nocond:
+            if expr_node_type == self.syms.test or expr_node_type == self.syms.test_nocond:
                 first_child = expr_node.get_child(0)
-                if first_child.type in (syms.lambdef, syms.lambdef_nocond):
+                if first_child.type in (self.syms.lambdef, self.syms.lambdef_nocond):
                     return self.handle_lambdef(first_child)
                 elif expr_node.num_children() > 1:
                     return self.handle_ifexp(expr_node)
                 else:
                     expr_node = first_child
-            elif expr_node_type == syms.or_test or \
-                    expr_node_type == syms.and_test:
+            elif expr_node_type == self.syms.or_test or \
+                    expr_node_type == self.syms.and_test:
                 if expr_node.num_children() == 1:
                     expr_node = expr_node.get_child(0)
                     continue
                 seq = [self.handle_expr(expr_node.get_child(i))
                        for i in range(0, expr_node.num_children(), 2)]
-                if expr_node_type == syms.or_test:
+                if expr_node_type == self.syms.or_test:
                     op = ast.Or
                 else:
                     op = ast.And
                 return ast.BoolOp(op, seq, expr_node.get_lineno(), expr_node.get_column())
-            elif expr_node_type == syms.not_test:
+            elif expr_node_type == self.syms.not_test:
                 if expr_node.num_children() == 1:
                     expr_node = expr_node.get_child(0)
                     continue
                 expr = self.handle_expr(expr_node.get_child(1))
                 return ast.UnaryOp(ast.Not, expr, expr_node.get_lineno(),
                                    expr_node.get_column())
-            elif expr_node_type == syms.comparison:
+            elif expr_node_type == self.syms.comparison:
                 if expr_node.num_children() == 1:
                     expr_node = expr_node.get_child(0)
                     continue
@@ -814,19 +814,19 @@ class ASTBuilder:
                     operands.append(self.handle_expr(expr_node.get_child(i + 1)))
                 return ast.Compare(expr, operators, operands, expr_node.get_lineno(),
                                    expr_node.get_column())
-            elif expr_node_type == syms.star_expr:
+            elif expr_node_type == self.syms.star_expr:
                 return self.handle_star_expr(expr_node)
-            elif expr_node_type == syms.expr or \
-                    expr_node_type == syms.xor_expr or \
-                    expr_node_type == syms.and_expr or \
-                    expr_node_type == syms.shift_expr or \
-                    expr_node_type == syms.arith_expr or \
-                    expr_node_type == syms.term:
+            elif expr_node_type == self.syms.expr or \
+                    expr_node_type == self.syms.xor_expr or \
+                    expr_node_type == self.syms.and_expr or \
+                    expr_node_type == self.syms.shift_expr or \
+                    expr_node_type == self.syms.arith_expr or \
+                    expr_node_type == self.syms.term:
                 if expr_node.num_children() == 1:
                     expr_node = expr_node.get_child(0)
                     continue
                 return self.handle_binop(expr_node)
-            elif expr_node_type == syms.yield_expr:
+            elif expr_node_type == self.syms.yield_expr:
                 is_from = False
                 if expr_node.num_children() > 1:
                     arg_node = expr_node.get_child(1)  # yield arg
@@ -840,12 +840,12 @@ class ASTBuilder:
                 if is_from:
                     return ast.YieldFrom(expr, expr_node.get_lineno(), expr_node.get_column())
                 return ast.Yield(expr, expr_node.get_lineno(), expr_node.get_column())
-            elif expr_node_type == syms.factor:
+            elif expr_node_type == self.syms.factor:
                 if expr_node.num_children() == 1:
                     expr_node = expr_node.get_child(0)
                     continue
                 return self.handle_factor(expr_node)
-            elif expr_node_type == syms.power:
+            elif expr_node_type == self.syms.power:
                 return self.handle_power(expr_node)
             else:
                 raise AssertionError("unknown expr")
@@ -950,7 +950,7 @@ class ASTBuilder:
                              atom_node.get_column())
         for i in range(start+1, num_ch):
             trailer = atom_node.get_child(i)
-            if trailer.type != syms.trailer:
+            if trailer.type != self.syms.trailer:
                 break
             tmp_atom_expr = self.handle_trailer(trailer, atom_expr)
             tmp_atom_expr.lineno = atom_expr.lineno
@@ -966,7 +966,7 @@ class ASTBuilder:
         atom_expr = self.handle_atom_expr(power_node.get_child(0))
         if power_node.num_children() == 1:
             return atom_expr
-        if power_node.get_child(-1).type == syms.factor:
+        if power_node.get_child(-1).type == self.syms.factor:
             right = self.handle_expr(power_node.get_child(-1))
             atom_expr = ast.BinOp(atom_expr, ast.Pow, right, power_node.get_lineno(),
                                   power_node.get_column())
@@ -974,28 +974,28 @@ class ASTBuilder:
 
     def handle_slice(self, slice_node):
         first_child = slice_node.get_child(0)
-        if slice_node.num_children() == 1 and first_child.type == syms.test:
+        if slice_node.num_children() == 1 and first_child.type == self.syms.test:
             index = self.handle_expr(first_child)
             return ast.Index(index)
         lower = None
         upper = None
         step = None
-        if first_child.type == syms.test:
+        if first_child.type == self.syms.test:
             lower = self.handle_expr(first_child)
         if first_child.type == Token.COLON.value:
             if slice_node.num_children() > 1:
                 second_child = slice_node.get_child(1)
-                if second_child.type == syms.test:
+                if second_child.type == self.syms.test:
                     upper = self.handle_expr(second_child)
         elif slice_node.num_children() > 2:
             third_child = slice_node.get_child(2)
-            if third_child.type == syms.test:
+            if third_child.type == self.syms.test:
                 upper = self.handle_expr(third_child)
         last_child = slice_node.get_child(-1)
-        if last_child.type == syms.sliceop:
+        if last_child.type == self.syms.sliceop:
             if last_child.num_children() != 1:
                 step_child = last_child.get_child(1)
-                if step_child.type == syms.test:
+                if step_child.type == self.syms.test:
                     step = self.handle_expr(step_child)
         return ast.Slice(lower, upper, step)
 
@@ -1042,10 +1042,10 @@ class ASTBuilder:
         generator_count = 0
         for i in range(args_node.num_children()):
             argument = args_node.get_child(i)
-            if argument.type == syms.argument:
+            if argument.type == self.syms.argument:
                 if argument.num_children() == 1:
                     arg_count += 1
-                elif argument.get_child(1).type == syms.comp_for:
+                elif argument.get_child(1).type == self.syms.comp_for:
                     generator_count += 1
                 elif argument.get_child(0).type == Token.STAR.value:
                     arg_count += 1
@@ -1067,7 +1067,7 @@ class ASTBuilder:
         i = 0
         while i < child_count:
             argument = args_node.get_child(i)
-            if argument.type == syms.argument:
+            if argument.type == self.syms.argument:
                 expr_node = argument.get_child(0)
                 if argument.num_children() == 1:
                     # a positional argument
@@ -1097,7 +1097,7 @@ class ASTBuilder:
                     expr = self.handle_expr(argument.get_child(1))
                     keywords.append(ast.keyword(None, expr))
                     doublestars_count += 1
-                elif argument.get_child(1).type == syms.comp_for:
+                elif argument.get_child(1).type == self.syms.comp_for:
                     # the lone generator expression
                     args.append(self.handle_genexp(argument))
                 else:
@@ -1208,7 +1208,7 @@ class ASTBuilder:
             if second_child.type == Token.RPAR.value:
                 return ast.Tuple(None, ast.Load, atom_node.get_lineno(),
                                  atom_node.get_column())
-            elif second_child.type == syms.yield_expr:
+            elif second_child.type == self.syms.yield_expr:
                 return self.handle_expr(second_child)
             return self.handle_testlist_gexp(second_child)
         elif first_child_type == Token.LSQB.value:
@@ -1235,11 +1235,11 @@ class ASTBuilder:
                      maker.get_child(1).type == Token.COMMA.value)):
                     # a set display
                     return self.handle_setdisplay(maker, atom_node)
-                elif n_maker_children > 1 and maker.get_child(1).type == syms.comp_for:
+                elif n_maker_children > 1 and maker.get_child(1).type == self.syms.comp_for:
                     # a set comprehension
                     return self.handle_setcomp(maker, atom_node)
                 elif (n_maker_children > (3-is_dict) and
-                      maker.get_child(3-is_dict).type == syms.comp_for):
+                      maker.get_child(3-is_dict).type == self.syms.comp_for):
                     # a dictionary comprehension
                     if is_dict:
                         raise self.error("dict unpacking cannot be used in "
@@ -1254,7 +1254,7 @@ class ASTBuilder:
 
     def handle_testlist_gexp(self, gexp_node):
         if gexp_node.num_children() > 1 and \
-                gexp_node.get_child(1).type == syms.comp_for:
+                gexp_node.get_child(1).type == self.syms.comp_for:
             return self.handle_genexp(gexp_node)
         return self.handle_testlist(gexp_node)
 
@@ -1269,10 +1269,10 @@ class ASTBuilder:
                 return count
             while True:
                 first_child = current_iter.get_child(0)
-                if first_child.type == syms.comp_for:
+                if first_child.type == self.syms.comp_for:
                     current_for = current_iter.get_child(0)
                     break
-                elif first_child.type == syms.comp_if:
+                elif first_child.type == self.syms.comp_if:
                     if first_child.num_children() == 3:
                         current_iter = first_child.get_child(2)
                     else:
@@ -1284,7 +1284,7 @@ class ASTBuilder:
         count = 0
         while True:
             first_child = iter_node.get_child(0)
-            if first_child.type == syms.comp_for:
+            if first_child.type == self.syms.comp_for:
                 return count
             count += 1
             if first_child.num_children() == 2:
@@ -1312,7 +1312,7 @@ class ASTBuilder:
                 comp = ast.comprehension(target, expr, None)
             if comp_node.num_children() == 5:
                 comp_node = comp_iter = comp_node.get_child(4)
-                assert comp_iter.type == syms.comp_iter
+                assert comp_iter.type == self.syms.comp_iter
                 ifs_count = self.count_comp_ifs(comp_iter)
                 if ifs_count:
                     ifs = []
@@ -1322,7 +1322,7 @@ class ASTBuilder:
                         if comp_if.num_children() == 3:
                             comp_node = comp_iter = comp_if.get_child(2)
                     comp.ifs = ifs
-                if comp_node.type == syms.comp_iter:
+                if comp_node.type == self.syms.comp_iter:
                     comp_node = comp_node.get_child(0)
             assert isinstance(comp, ast.comprehension)
             comps.append(comp)
