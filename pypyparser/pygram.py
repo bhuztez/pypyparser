@@ -2,8 +2,8 @@ import os
 from . import parser, pytoken, metaparser
 
 class PythonGrammar(parser.Grammar):
-    KEYWORD_TOKEN = pytoken.Token.NAME.value
-    TOKENS = {k:v.value for k,v in pytoken.Token.__members__.items()}
+    KEYWORD_TOKEN = pytoken.Token.NAME
+    TOKENS = pytoken.Token.__dict__
     OPERATOR_MAP = pytoken.OPMAP
 
 def get_python_grammar(filename):

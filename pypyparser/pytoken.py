@@ -1,119 +1,117 @@
 """Python token definitions."""
 
-from enum import Enum, auto
-
-class Token(Enum):
-    ENDMARKER = auto()
-    NAME = auto()
-    NUMBER = auto()
-    STRING = auto()
-    NEWLINE = auto()
-    INDENT = auto()
-    DEDENT = auto()
-    LPAR = auto()
-    RPAR = auto()
-    LSQB = auto()
-    RSQB = auto()
-    COLON = auto()
-    COMMA = auto()
-    SEMI = auto()
-    PLUS = auto()
-    MINUS = auto()
-    STAR = auto()
-    SLASH = auto()
-    VBAR = auto()
-    AMPER = auto()
-    LESS = auto()
-    GREATER = auto()
-    EQUAL = auto()
-    DOT = auto()
-    PERCENT = auto()
-    BACKQUOTE = auto()
-    LBRACE = auto()
-    RBRACE = auto()
-    EQEQUAL = auto()
-    NOTEQUAL = auto()
-    LESSEQUAL = auto()
-    GREATEREQUAL = auto()
-    TILDE = auto()
-    CIRCUMFLEX = auto()
-    LEFTSHIFT = auto()
-    RIGHTSHIFT = auto()
-    DOUBLESTAR = auto()
-    PLUSEQUAL = auto()
-    MINEQUAL = auto()
-    STAREQUAL = auto()
-    SLASHEQUAL = auto()
-    PERCENTEQUAL = auto()
-    AMPEREQUAL = auto()
-    VBAREQUAL = auto()
-    CIRCUMFLEXEQUAL = auto()
-    LEFTSHIFTEQUAL = auto()
-    RIGHTSHIFTEQUAL = auto()
-    DOUBLESTAREQUAL = auto()
-    DOUBLESLASH = auto()
-    DOUBLESLASHEQUAL = auto()
-    AT = auto()
-    ATEQUAL = auto()
-    RARROW = auto()
-    ELLIPSIS = auto()
-    OP = auto()
-    ASYNC = auto()
-    AWAIT = auto()
-    ERRORTOKEN = auto()
+class Token:
+    ENDMARKER        = 1
+    NAME             = 2
+    NUMBER           = 3
+    STRING           = 4
+    NEWLINE          = 5
+    INDENT           = 6
+    DEDENT           = 7
+    LPAR             = 8
+    RPAR             = 9
+    LSQB             = 10
+    RSQB             = 11
+    COLON            = 12
+    COMMA            = 13
+    SEMI             = 14
+    PLUS             = 15
+    MINUS            = 16
+    STAR             = 17
+    SLASH            = 18
+    VBAR             = 19
+    AMPER            = 20
+    LESS             = 21
+    GREATER          = 22
+    EQUAL            = 23
+    DOT              = 24
+    PERCENT          = 25
+    BACKQUOTE        = 26
+    LBRACE           = 27
+    RBRACE           = 28
+    EQEQUAL          = 29
+    NOTEQUAL         = 30
+    LESSEQUAL        = 31
+    GREATEREQUAL     = 32
+    TILDE            = 33
+    CIRCUMFLEX       = 34
+    LEFTSHIFT        = 35
+    RIGHTSHIFT       = 36
+    DOUBLESTAR       = 37
+    PLUSEQUAL        = 38
+    MINEQUAL         = 39
+    STAREQUAL        = 40
+    SLASHEQUAL       = 41
+    PERCENTEQUAL     = 42
+    AMPEREQUAL       = 43
+    VBAREQUAL        = 44
+    CIRCUMFLEXEQUAL  = 45
+    LEFTSHIFTEQUAL   = 46
+    RIGHTSHIFTEQUAL  = 47
+    DOUBLESTAREQUAL  = 48
+    DOUBLESLASH      = 49
+    DOUBLESLASHEQUAL = 50
+    AT               = 51
+    ATEQUAL          = 52
+    RARROW           = 53
+    ELLIPSIS         = 54
+    OP               = 55
+    ASYNC            = 56
+    AWAIT            = 57
+    ERRORTOKEN       = 58
 
     # extra PyPy-specific tokens
-    COMMENT = auto()
-    NIL = auto()
+    COMMENT          = 59
+    NIL              = 60
 
 
 OPMAP = {
-    "(":   Token.LPAR.value,
-    ")":   Token.RPAR.value,
-    "[":   Token.LSQB.value,
-    "]":   Token.RSQB.value,
-    ":":   Token.COLON.value,
-    ",":   Token.COMMA.value,
-    ";":   Token.SEMI.value,
-    "+":   Token.PLUS.value,
-    "-":   Token.MINUS.value,
-    "*":   Token.STAR.value,
-    "/":   Token.SLASH.value,
-    "|":   Token.VBAR.value,
-    "&":   Token.AMPER.value,
-    "<":   Token.LESS.value,
-    ">":   Token.GREATER.value,
-    "=":   Token.EQUAL.value,
-    ".":   Token.DOT.value,
-    "%":   Token.PERCENT.value,
-    "`":   Token.BACKQUOTE.value,
-    "{":   Token.LBRACE.value,
-    "}":   Token.RBRACE.value,
-    "==":  Token.EQEQUAL.value,
-    "!=":  Token.NOTEQUAL.value,
-    "<>":  Token.NOTEQUAL.value,
-    "<=":  Token.LESSEQUAL.value,
-    ">=":  Token.GREATEREQUAL.value,
-    "~":   Token.TILDE.value,
-    "^":   Token.CIRCUMFLEX.value,
-    "<<":  Token.LEFTSHIFT.value,
-    ">>":  Token.RIGHTSHIFT.value,
-    "**":  Token.DOUBLESTAR.value,
-    "+=":  Token.PLUSEQUAL.value,
-    "-=":  Token.MINEQUAL.value,
-    "*=":  Token.STAREQUAL.value,
-    "/=":  Token.SLASHEQUAL.value,
-    "%=":  Token.PERCENTEQUAL.value,
-    "&=":  Token.AMPEREQUAL.value,
-    "|=":  Token.VBAREQUAL.value,
-    "^=":  Token.CIRCUMFLEXEQUAL.value,
-    "<<=": Token.LEFTSHIFTEQUAL.value,
-    ">>=": Token.RIGHTSHIFTEQUAL.value,
-    "**=": Token.DOUBLESTAREQUAL.value,
-    "//":  Token.DOUBLESLASH.value,
-    "//=": Token.DOUBLESLASHEQUAL.value,
-    "@":   Token.AT.value,
-    "@=":  Token.ATEQUAL.value,
-    "->":  Token.RARROW.value,
-    "...": Token.ELLIPSIS.value,
+    "(":   Token.LPAR,
+    ")":   Token.RPAR,
+    "[":   Token.LSQB,
+    "]":   Token.RSQB,
+    ":":   Token.COLON,
+    ",":   Token.COMMA,
+    ";":   Token.SEMI,
+    "+":   Token.PLUS,
+    "-":   Token.MINUS,
+    "*":   Token.STAR,
+    "/":   Token.SLASH,
+    "|":   Token.VBAR,
+    "&":   Token.AMPER,
+    "<":   Token.LESS,
+    ">":   Token.GREATER,
+    "=":   Token.EQUAL,
+    ".":   Token.DOT,
+    "%":   Token.PERCENT,
+    "`":   Token.BACKQUOTE,
+    "{":   Token.LBRACE,
+    "}":   Token.RBRACE,
+    "==":  Token.EQEQUAL,
+    "!=":  Token.NOTEQUAL,
+    "<>":  Token.NOTEQUAL,
+    "<=":  Token.LESSEQUAL,
+    ">=":  Token.GREATEREQUAL,
+    "~":   Token.TILDE,
+    "^":   Token.CIRCUMFLEX,
+    "<<":  Token.LEFTSHIFT,
+    ">>":  Token.RIGHTSHIFT,
+    "**":  Token.DOUBLESTAR,
+    "+=":  Token.PLUSEQUAL,
+    "-=":  Token.MINEQUAL,
+    "*=":  Token.STAREQUAL,
+    "/=":  Token.SLASHEQUAL,
+    "%=":  Token.PERCENTEQUAL,
+    "&=":  Token.AMPEREQUAL,
+    "|=":  Token.VBAREQUAL,
+    "^=":  Token.CIRCUMFLEXEQUAL,
+    "<<=": Token.LEFTSHIFTEQUAL,
+    ">>=": Token.RIGHTSHIFTEQUAL,
+    "**=": Token.DOUBLESTAREQUAL,
+    "//":  Token.DOUBLESLASH,
+    "//=": Token.DOUBLESLASHEQUAL,
+    "@":   Token.AT,
+    "@=":  Token.ATEQUAL,
+    "->":  Token.RARROW,
+    "...": Token.ELLIPSIS,
 }

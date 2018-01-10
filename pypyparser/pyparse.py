@@ -176,14 +176,14 @@ def parse_source(bytessrc, compile_info, parser=None):
 
             if compile_info.mode == 'single':
                 for tp, value, lineno, column, line in tokens_stream:
-                    if tp == Token.ENDMARKER.value:
+                    if tp == Token.ENDMARKER:
                         break
-                    if tp == Token.NEWLINE.value:
+                    if tp == Token.NEWLINE:
                         continue
 
-                    if tp == Token.COMMENT.value:
+                    if tp == Token.COMMENT:
                         for tp, _, _, _, _ in tokens_stream:
-                            if tp == Token.NEWLINE.value:
+                            if tp == Token.NEWLINE:
                                 break
                     else:
                         new_err = error.SyntaxError
@@ -202,9 +202,9 @@ def parse_source(bytessrc, compile_info, parser=None):
             # Catch parse errors, pretty them up and reraise them as a
             # SyntaxError.
             new_err = error.IndentationError
-            if tp == Token.INDENT.value:
+            if tp == Token.INDENT:
                 msg = "unexpected indent"
-            elif e.expected == Token.INDENT.value:
+            elif e.expected == Token.INDENT:
                 msg = "expected an indented block"
             else:
                 new_err = error.SyntaxError

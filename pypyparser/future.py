@@ -54,24 +54,24 @@ class TokenIterator:
             return False
 
     def skip_name(self, name):
-        if self.tok[0] == Token.NAME.value and self.tok[1] == name:
+        if self.tok[0] == Token.NAME and self.tok[1] == name:
             self.next()
             return True
         else:
             return False
 
     def next_feature_name(self):
-        if self.tok[0] == Token.NAME.value:
+        if self.tok[0] == Token.NAME:
             name = self.tok[1]
             self.next()
             if self.skip_name("as"):
-                self.skip(Token.NAME.value)
+                self.skip(Token.NAME)
             return name
         else:
             return ''
 
     def skip_newlines(self):
-        while self.skip(Token.NEWLINE.value):
+        while self.skip(Token.NEWLINE):
             pass
 
 
@@ -86,23 +86,23 @@ def add_future_flags(future_flags, tokens):
     # the real parsing done afterwards to give errors.
     it.skip_newlines()
     it.skip_name("r") or it.skip_name("u") or it.skip_name("ru")
-    if it.skip(Token.STRING.value):
+    if it.skip(Token.STRING):
         it.skip_newlines()
 
     while (it.skip_name("from") and
            it.skip_name("__future__") and
            it.skip_name("import")):
-        it.skip(Token.LPAR.value)    # optionally
+        it.skip(Token.LPAR)    # optionally
         # return in 'last_position' any line-column pair that points
         # somewhere inside the last __future__ import statement
         # (at the start would be fine too, but it's easier to grab a
         # random position inside)
         last_position = (it.tok[2], it.tok[3])
         result |= future_flags.get_compiler_feature(it.next_feature_name())
-        while it.skip(Token.COMMA.value):
+        while it.skip(Token.COMMA):
             result |= future_flags.get_compiler_feature(it.next_feature_name())
-        it.skip(Token.RPAR.value)    # optionally
-        it.skip(Token.SEMI.value)    # optionally
+        it.skip(Token.RPAR)    # optionally
+        it.skip(Token.SEMI)    # optionally
         it.skip_newlines()
 
     # remove the flags that were specified but are anyway mandatory

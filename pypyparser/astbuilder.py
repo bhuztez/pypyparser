@@ -25,18 +25,18 @@ augassign_operator_map = {
 }
 
 operator_map = {
-    Token.VBAR.value : ast.BitOr,
-    Token.CIRCUMFLEX.value : ast.BitXor,
-    Token.AMPER.value : ast.BitAnd,
-    Token.LEFTSHIFT.value : ast.LShift,
-    Token.RIGHTSHIFT.value : ast.RShift,
-    Token.PLUS.value : ast.Add,
-    Token.MINUS.value : ast.Sub,
-    Token.STAR.value : ast.Mult,
-    Token.SLASH.value : ast.Div,
-    Token.DOUBLESLASH.value : ast.FloorDiv,
-    Token.PERCENT.value : ast.Mod,
-    Token.AT.value : ast.MatMult
+    Token.VBAR : ast.BitOr,
+    Token.CIRCUMFLEX : ast.BitXor,
+    Token.AMPER : ast.BitAnd,
+    Token.LEFTSHIFT : ast.LShift,
+    Token.RIGHTSHIFT : ast.RShift,
+    Token.PLUS : ast.Add,
+    Token.MINUS : ast.Sub,
+    Token.STAR : ast.Mult,
+    Token.SLASH : ast.Div,
+    Token.DOUBLESLASH : ast.FloorDiv,
+    Token.PERCENT : ast.Mod,
+    Token.AT : ast.MatMult
 }
 
 
@@ -55,7 +55,7 @@ class ASTBuilder:
             stmts = []
             for i in range(n.num_children() - 1):
                 stmt = n.get_child(i)
-                if stmt.type == Token.NEWLINE.value:
+                if stmt.type == Token.NEWLINE:
                     continue
                 sub_stmts_count = self.number_of_statements(stmt)
                 if sub_stmts_count == 1:
@@ -71,7 +71,7 @@ class ASTBuilder:
             return ast.Expression(body)
         elif n.type == self.syms.single_input:
             first_child = n.get_child(0)
-            if first_child.type == Token.NEWLINE.value:
+            if first_child.type == Token.NEWLINE:
                 # An empty line.
                 return ast.Interactive([])
             else:
@@ -82,7 +82,7 @@ class ASTBuilder:
                     stmts = []
                     for i in range(0, first_child.num_children(), 2):
                         stmt = first_child.get_child(i)
-                        if stmt.type == Token.NEWLINE.value:
+                        if stmt.type == Token.NEWLINE:
                             break
                         stmts.append(self.handle_stmt(stmt))
                 return ast.Interactive(stmts)
@@ -194,7 +194,7 @@ class ASTBuilder:
                               for i in range(0, import_name.num_children(), 2)]
                 name = ".".join(name_parts)
                 return ast.alias(name, None)
-            elif import_name_type == Token.STAR.value:
+            elif import_name_type == Token.STAR:
                 return ast.alias("*", None)
             else:
                 raise AssertionError("unknown import name")
@@ -219,20 +219,20 @@ class ASTBuilder:
                     module = self.alias_for_import_name(child, False)
                     i += 1
                     break
-                elif child_type == Token.ELLIPSIS.value:
+                elif child_type == Token.ELLIPSIS:
                     # Special case for tokenization.
                     dot_count += 2
-                elif child_type != Token.DOT.value:
+                elif child_type != Token.DOT:
                     break
                 i += 1
                 dot_count += 1
             i += 1
             after_import_type = import_node.get_child(i).type
             star_import = False
-            if after_import_type == Token.STAR.value:
+            if after_import_type == Token.STAR:
                 names_node = import_node.get_child(i)
                 star_import = True
-            elif after_import_type == Token.LPAR.value:
+            elif after_import_type == Token.LPAR:
                 names_node = import_node.get_child(i + 1)
             elif after_import_type == self.syms.import_as_names:
                 names_node = import_node.get_child(i)
@@ -274,7 +274,7 @@ class ASTBuilder:
         first_child = suite_node.get_child(0)
         if first_child.type == self.syms.simple_stmt:
             end = first_child.num_children() - 1
-            if first_child.get_child(end - 1).type == Token.SEMI.value:
+            if first_child.get_child(end - 1).type == Token.SEMI:
                 end -= 1
             stmts = [self.handle_stmt(first_child.get_child(i))
                      for i in range(0, end, 2)]
@@ -310,7 +310,7 @@ class ASTBuilder:
         elif otherwise_string == "elif":
             elif_count = child_count - 4
             after_elif = if_node.get_child(elif_count + 1)
-            if after_elif.type == Token.NAME.value and \
+            if after_elif.type == Token.NAME and \
                     after_elif.get_value() == "else":
                 has_else = True
                 elif_count -= 3
@@ -392,10 +392,10 @@ class ASTBuilder:
         otherwise = None
         finally_suite = None
         possible_extra_clause = try_node.get_child(-3)
-        if possible_extra_clause.type == Token.NAME.value:
+        if possible_extra_clause.type == Token.NAME:
             if possible_extra_clause.get_value() == "finally":
                 if child_count >= 9 and \
-                        try_node.get_child(-6).type == Token.NAME.value:
+                        try_node.get_child(-6).type == Token.NAME:
                     otherwise = self.handle_suite(try_node.get_child(-4))
                     except_count -= 1
                 finally_suite = self.handle_suite(try_node.get_child(-1))
@@ -442,7 +442,7 @@ class ASTBuilder:
             body = self.handle_suite(classdef_node.get_child(3))
             return ast.ClassDef(name, None, None, body, decorators,
                                 classdef_node.get_lineno(), classdef_node.get_column())
-        if classdef_node.get_child(3).type == Token.RPAR.value:
+        if classdef_node.get_child(3).type == Token.RPAR:
             # class NAME '(' ')' ':' suite
             body = self.handle_suite(classdef_node.get_child(5))
             return ast.ClassDef(name, None, None, body, decorators,
@@ -470,7 +470,7 @@ class ASTBuilder:
         args = self.handle_arguments(funcdef_node.get_child(2))
         suite = 4
         returns = None
-        if funcdef_node.get_child(3).type == Token.RARROW.value:
+        if funcdef_node.get_child(3).type == Token.RARROW:
             returns = self.handle_expr(funcdef_node.get_child(4))
             suite += 2
         body = self.handle_suite(funcdef_node.get_child(suite))
@@ -554,7 +554,7 @@ class ASTBuilder:
         # scan args
         while i < child_count:
             arg_type = arguments_node.get_child(i).type
-            if arg_type == Token.STAR.value:
+            if arg_type == Token.STAR:
                 i += 1
                 if i < child_count:
                     next_arg_type = arguments_node.get_child(i).type
@@ -562,16 +562,16 @@ class ASTBuilder:
                         next_arg_type == self.syms.vfpdef):
                         i += 1
                 break
-            if arg_type == Token.DOUBLESTAR.value:
+            if arg_type == Token.DOUBLESTAR:
                 break
             if arg_type == self.syms.vfpdef or arg_type == self.syms.tfpdef:
                 n_pos += 1
-            if arg_type == Token.EQUAL.value:
+            if arg_type == Token.EQUAL:
                 n_pos_def += 1
             i += 1
         while i < child_count:
             arg_type = arguments_node.get_child(i).type
-            if arg_type == Token.DOUBLESTAR.value:
+            if arg_type == Token.DOUBLESTAR:
                 break
             if arg_type == self.syms.vfpdef or arg_type == self.syms.tfpdef:
                 n_kwdonly += 1
@@ -592,7 +592,7 @@ class ASTBuilder:
             arg_type = arg.type
             if arg_type == self.syms.tfpdef or arg_type == self.syms.vfpdef:
                 if i + 1 < child_count and \
-                        arguments_node.get_child(i + 1).type == Token.EQUAL.value:
+                        arguments_node.get_child(i + 1).type == Token.EQUAL:
                     default_node = arguments_node.get_child(i + 2)
                     posdefaults.append(self.handle_expr(default_node))
                     i += 2
@@ -602,13 +602,13 @@ class ASTBuilder:
                     self.error(msg, arguments_node)
                 pos.append(self.handle_arg(arg))
                 i += 2
-            elif arg_type == Token.STAR.value:
+            elif arg_type == Token.STAR:
                 if i + 1 >= child_count:
                     self.error("named arguments must follow bare *",
                                arguments_node)
                 name_node = arguments_node.get_child(i + 1)
                 keywordonly_args = []
-                if name_node.type == Token.COMMA.value:
+                if name_node.type == Token.COMMA:
                     i += 2
                     i = self.handle_keywordonly_args(arguments_node, i, kwonly,
                                                      kwdefaults)
@@ -621,7 +621,7 @@ class ASTBuilder:
                             next_arg_type == self.syms.vfpdef):
                             i = self.handle_keywordonly_args(arguments_node, i,
                                                              kwonly, kwdefaults)
-            elif arg_type == Token.DOUBLESTAR.value:
+            elif arg_type == Token.DOUBLESTAR:
                 name_node = arguments_node.get_child(i + 1)
                 kwarg = self.handle_arg(name_node)
                 i += 3
@@ -640,7 +640,7 @@ class ASTBuilder:
             arg_type = arg.type
             if arg_type == self.syms.vfpdef or arg_type == self.syms.tfpdef:
                 if (i + 1 < child_count and
-                    arguments_node.get_child(i + 1).type == Token.EQUAL.value):
+                    arguments_node.get_child(i + 1).type == Token.EQUAL):
                     expr = self.handle_expr(arguments_node.get_child(i + 2))
                     kwdefaults.append(expr)
                     i += 2
@@ -656,7 +656,7 @@ class ASTBuilder:
                 kwonly.append(ast.arg(argname, ann, arg.get_lineno(),
                                                     arg.get_column()))
                 i += 2
-            elif arg_type == Token.DOUBLESTAR.value:
+            elif arg_type == Token.DOUBLESTAR:
                 return i
         return i
 
@@ -874,24 +874,24 @@ class ASTBuilder:
         comp_node = comp_op_node.get_child(0)
         comp_type = comp_node.type
         if comp_op_node.num_children() == 1:
-            if comp_type == Token.LESS.value:
+            if comp_type == Token.LESS:
                 return ast.Lt
-            elif comp_type == Token.GREATER.value:
+            elif comp_type == Token.GREATER:
                 return ast.Gt
-            elif comp_type == Token.EQEQUAL.value:
+            elif comp_type == Token.EQEQUAL:
                 return ast.Eq
-            elif comp_type == Token.LESSEQUAL.value:
+            elif comp_type == Token.LESSEQUAL:
                 return ast.LtE
-            elif comp_type == Token.GREATEREQUAL.value:
+            elif comp_type == Token.GREATEREQUAL:
                 return ast.GtE
-            elif comp_type == Token.NOTEQUAL.value:
+            elif comp_type == Token.NOTEQUAL:
                 flufl = self.compile_info.flags & consts.CO_FUTURE_BARRY_AS_BDFL
                 if flufl and comp_node.get_value() == '!=':
                     self.error('invalid comparison', comp_node)
                 elif not flufl and comp_node.get_value() == '<>':
                     self.error('invalid comparison', comp_node)
                 return ast.NotEq
-            elif comp_type == Token.NAME.value:
+            elif comp_type == Token.NAME:
                 if comp_node.get_value() == "is":
                     return ast.Is
                 elif comp_node.get_value() == "in":
@@ -927,11 +927,11 @@ class ASTBuilder:
         from .parser import Terminal
         expr = self.handle_expr(factor_node.get_child(1))
         op_type = factor_node.get_child(0).type
-        if op_type == Token.PLUS.value:
+        if op_type == Token.PLUS:
             op = ast.UAdd
-        elif op_type == Token.MINUS.value:
+        elif op_type == Token.MINUS:
             op = ast.USub
-        elif op_type == Token.TILDE.value:
+        elif op_type == Token.TILDE:
             op = ast.Invert
         else:
             raise AssertionError("invalid factor node")
@@ -940,7 +940,7 @@ class ASTBuilder:
     def handle_atom_expr(self, atom_node):
         start = 0
         num_ch = atom_node.num_children()
-        if atom_node.get_child(0).type == Token.AWAIT.value:
+        if atom_node.get_child(0).type == Token.AWAIT:
             start = 1
         atom_expr = self.handle_atom(atom_node.get_child(start))
         if num_ch == 1:
@@ -982,7 +982,7 @@ class ASTBuilder:
         step = None
         if first_child.type == self.syms.test:
             lower = self.handle_expr(first_child)
-        if first_child.type == Token.COLON.value:
+        if first_child.type == Token.COLON:
             if slice_node.num_children() > 1:
                 second_child = slice_node.get_child(1)
                 if second_child.type == self.syms.test:
@@ -1001,13 +1001,13 @@ class ASTBuilder:
 
     def handle_trailer(self, trailer_node, left_expr):
         first_child = trailer_node.get_child(0)
-        if first_child.type == Token.LPAR.value:
+        if first_child.type == Token.LPAR:
             if trailer_node.num_children() == 2:
                 return ast.Call(left_expr, None, None,
                                 trailer_node.get_lineno(), trailer_node.get_column())
             else:
                 return self.handle_call(trailer_node.get_child(1), left_expr)
-        elif first_child.type == Token.DOT.value:
+        elif first_child.type == Token.DOT:
             attr = self.new_identifier(trailer_node.get_child(1).get_value())
             return ast.Attribute(left_expr, attr, ast.Load,
                                  trailer_node.get_lineno(), trailer_node.get_column())
@@ -1047,10 +1047,10 @@ class ASTBuilder:
                     arg_count += 1
                 elif argument.get_child(1).type == self.syms.comp_for:
                     generator_count += 1
-                elif argument.get_child(0).type == Token.STAR.value:
+                elif argument.get_child(0).type == Token.STAR:
                     arg_count += 1
                 else:
-                    # argument.get_child(0).type == Token.DOUBLESTAR.value
+                    # argument.get_child(0).type == Token.DOUBLESTAR
                     # or keyword arg
                     keyword_count += 1
         if generator_count > 1 or \
@@ -1081,7 +1081,7 @@ class ASTBuilder:
                                        "keyword argument",
                                        expr_node)
                     args.append(self.handle_expr(expr_node))
-                elif expr_node.type == Token.STAR.value:
+                elif expr_node.type == Token.STAR:
                     # an iterable argument unpacking
                     if doublestars_count:
                         self.error("iterable argument unpacking follows "
@@ -1091,7 +1091,7 @@ class ASTBuilder:
                     args.append(ast.Starred(expr, ast.Load,
                                             expr_node.get_lineno(),
                                             expr_node.get_column()))
-                elif expr_node.type == Token.DOUBLESTAR.value:
+                elif expr_node.type == Token.DOUBLESTAR:
                     # a keyword argument unpacking
                     i += 1
                     expr = self.handle_expr(argument.get_child(1))
@@ -1167,7 +1167,7 @@ class ASTBuilder:
             return float(w_num_str)
 
     def handle_dictelement(self, node, i):
-        if node.get_child(i).type == Token.DOUBLESTAR.value:
+        if node.get_child(i).type == Token.DOUBLESTAR:
             key = None
             value = self.handle_expr(node.get_child(i+1))
             i += 2
@@ -1180,7 +1180,7 @@ class ASTBuilder:
     def handle_atom(self, atom_node):
         first_child = atom_node.get_child(0)
         first_child_type = first_child.type
-        if first_child_type == Token.NAME.value:
+        if first_child_type == Token.NAME:
             name = first_child.get_value()
             if name == "None":
                 w_singleton = None
@@ -1195,44 +1195,44 @@ class ASTBuilder:
             return ast.NameConstant(w_singleton, first_child.get_lineno(),
                                 first_child.get_column())
         #
-        elif first_child_type == Token.STRING.value:
+        elif first_child_type == Token.STRING:
             return fstring.string_parse_literal(self, atom_node)
         #
-        elif first_child_type == Token.NUMBER.value:
+        elif first_child_type == Token.NUMBER:
             num_value = self.parse_number(first_child.get_value())
             return ast.Num(num_value, atom_node.get_lineno(), atom_node.get_column())
-        elif first_child_type == Token.ELLIPSIS.value:
+        elif first_child_type == Token.ELLIPSIS:
             return ast.Ellipsis(atom_node.get_lineno(), atom_node.get_column())
-        elif first_child_type == Token.LPAR.value:
+        elif first_child_type == Token.LPAR:
             second_child = atom_node.get_child(1)
-            if second_child.type == Token.RPAR.value:
+            if second_child.type == Token.RPAR:
                 return ast.Tuple(None, ast.Load, atom_node.get_lineno(),
                                  atom_node.get_column())
             elif second_child.type == self.syms.yield_expr:
                 return self.handle_expr(second_child)
             return self.handle_testlist_gexp(second_child)
-        elif first_child_type == Token.LSQB.value:
+        elif first_child_type == Token.LSQB:
             second_child = atom_node.get_child(1)
-            if second_child.type == Token.RSQB.value:
+            if second_child.type == Token.RSQB:
                 return ast.List(None, ast.Load, atom_node.get_lineno(),
                                 atom_node.get_column())
             if second_child.num_children() == 1 or \
-                    second_child.get_child(1).type == Token.COMMA.value:
+                    second_child.get_child(1).type == Token.COMMA:
                 elts = self.get_expression_list(second_child)
                 return ast.List(elts, ast.Load, atom_node.get_lineno(),
                                 atom_node.get_column())
             return self.handle_listcomp(second_child)
-        elif first_child_type == Token.LBRACE.value:
+        elif first_child_type == Token.LBRACE:
             maker = atom_node.get_child(1)
             n_maker_children = maker.num_children()
-            if maker.type == Token.RBRACE.value:
+            if maker.type == Token.RBRACE:
                 # an empty dict
                 return ast.Dict(None, None, atom_node.get_lineno(), atom_node.get_column())
             else:
-                is_dict = maker.get_child(0).type == Token.DOUBLESTAR.value
+                is_dict = maker.get_child(0).type == Token.DOUBLESTAR
                 if (n_maker_children == 1 or
                     (n_maker_children > 1 and
-                     maker.get_child(1).type == Token.COMMA.value)):
+                     maker.get_child(1).type == Token.COMMA)):
                     # a set display
                     return self.handle_setdisplay(maker, atom_node)
                 elif n_maker_children > 1 and maker.get_child(1).type == self.syms.comp_for:
