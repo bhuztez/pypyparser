@@ -1,6 +1,6 @@
 from .pytoken import Token
 from .parser import Parser, ParseError
-from . import future, pytokenizer, pygram, error, consts
+from . import future, pytokenizer, pygram, error, consts, astbuilder
 
 
 def _normalize_encoding(encoding):
@@ -48,21 +48,6 @@ def _check_line_for_encoding(line):
     return pytokenizer.match_encoding_declaration(line[i:]), True
 
 
-class PythonParser:
-
-    def __init__(self, future_flags=future.futureFlags_3_5,
-                 grammar=pygram.get_python_grammar("Grammar3.5")):
-        self.grammar = grammar
-        self.syms = pygram.get_symbols(grammar)
-        self.future_flags = future_flags
-
-        self._targets = {
-            'eval':   self.syms.eval_input,
-            'single': self.syms.single_input,
-            'exec':   self.syms.file_input,
-        }
-
-
 class CompileInfo:
     """Stores information about the source being compiled.
 
@@ -82,7 +67,7 @@ class CompileInfo:
     """
 
     def __init__(self, filename, mode="exec", flags=0, future_pos=(0, 0),
-                 hidden_applevel=False, optimize=-1, parser=PythonParser()):
+                 hidden_applevel=False, optimize=-1):
         self.filename = filename
         self.mode = mode
         self.encoding = None
@@ -90,138 +75,154 @@ class CompileInfo:
         self.optimize = optimize
         self.last_future_import = future_pos
         self.hidden_applevel = hidden_applevel
-        self.parser = parser
 
 
-def parse_source(bytessrc, compile_info, parser=None):
-    """Main entry point for parsing Python source.
+class PythonParser(Parser):
 
-    Everything from decoding the source to tokenizing to building the parse
-    tree is handled here.
-    """
-    if parser is None:
-        parser = Parser(compile_info.parser.grammar)
-    else:
-        parser.grammar = compile_info.parser.grammar
+    def __init__(self, version):
+        self.grammar = pygram.get_python_grammar("Grammar{}".format(version))
+        self.syms = pygram.get_symbols(self.grammar)
+        self.future_flags = future.FUTURE_FLAGS[version]
 
-    # Detect source encoding.
-    explicit_encoding = False
-    enc = None
-    if compile_info.flags & consts.PyCF_SOURCE_IS_UTF8:
-        enc = 'utf-8'
+        self._targets = {
+            'eval':   self.syms.eval_input,
+            'single': self.syms.single_input,
+            'exec':   self.syms.file_input,
+        }
 
-    if isinstance(bytessrc, bytes) and not (compile_info.flags & consts.PyCF_IGNORE_COOKIE):
-        if bytessrc.startswith(b"\xEF\xBB\xBF"):
-            bytessrc = bytessrc[3:]
+        super().__init__(self.grammar)
+
+
+    def parse_source(self, bytessrc, compile_info):
+        """Main entry point for parsing Python source.
+
+        Everything from decoding the source to tokenizing to building the parse
+        tree is handled here.
+        """
+
+        # Detect source encoding.
+        explicit_encoding = False
+        enc = None
+        if compile_info.flags & consts.PyCF_SOURCE_IS_UTF8:
             enc = 'utf-8'
-            # If an encoding is explicitly given check that it is utf-8.
-            decl_enc = _check_for_encoding(bytessrc)
-            explicit_encoding = (decl_enc is not None)
-            if decl_enc and decl_enc != "utf-8":
-                raise error.SyntaxError("UTF-8 BOM with %s coding cookie" % decl_enc,
-                                        filename=compile_info.filename)
-        else:
-            enc = _normalize_encoding(_check_for_encoding(bytessrc))
-            explicit_encoding = (enc is not None)
-            if enc is None:
+
+        if isinstance(bytessrc, bytes) and not (compile_info.flags & consts.PyCF_IGNORE_COOKIE):
+            if bytessrc.startswith(b"\xEF\xBB\xBF"):
+                bytessrc = bytessrc[3:]
                 enc = 'utf-8'
+                # If an encoding is explicitly given check that it is utf-8.
+                decl_enc = _check_for_encoding(bytessrc)
+                explicit_encoding = (decl_enc is not None)
+                if decl_enc and decl_enc != "utf-8":
+                    raise error.SyntaxError("UTF-8 BOM with %s coding cookie" % decl_enc,
+                                            filename=compile_info.filename)
+            else:
+                enc = _normalize_encoding(_check_for_encoding(bytessrc))
+                explicit_encoding = (enc is not None)
+                if enc is None:
+                    enc = 'utf-8'
 
-    if not isinstance(bytessrc, str):
+        if not isinstance(bytessrc, str):
+            try:
+                textsrc = bytessrc.decode(enc) if enc is not None else bytessrc.decode()
+            except LookupError:
+                raise error.SyntaxError("Unknown encoding: %s" % enc,
+                                        filename=compile_info.filename)
+            except UnicodeDecodeError as e:
+                raise error.SyntaxError(str(e))
+        else:
+            textsrc = bytessrc
+
+
+        flags = compile_info.flags
+        if explicit_encoding:
+            flags |= consts.PyCF_FOUND_ENCODING
+
+        # The tokenizer is very picky about how it wants its input.
+        source_lines = textsrc.splitlines(True)
+        if source_lines and not source_lines[-1].endswith("\n"):
+            source_lines[-1] += '\n'
+        if textsrc and textsrc[-1] == "\n":
+            flags &= ~consts.PyCF_DONT_IMPLY_DEDENT
+
+        self.prepare(self._targets[compile_info.mode])
+        tp = 0
         try:
-            textsrc = bytessrc.decode(enc) if enc is not None else bytessrc.decode()
-        except LookupError:
-            raise error.SyntaxError("Unknown encoding: %s" % enc,
-                                    filename=compile_info.filename)
-        except UnicodeDecodeError as e:
-            raise error.SyntaxError(str(e))
-    else:
-        textsrc = bytessrc
-
-
-    flags = compile_info.flags
-    if explicit_encoding:
-        flags |= consts.PyCF_FOUND_ENCODING
-
-    # The tokenizer is very picky about how it wants its input.
-    source_lines = textsrc.splitlines(True)
-    if source_lines and not source_lines[-1].endswith("\n"):
-        source_lines[-1] += '\n'
-    if textsrc and textsrc[-1] == "\n":
-        flags &= ~consts.PyCF_DONT_IMPLY_DEDENT
-
-    parser.prepare(compile_info.parser._targets[compile_info.mode])
-    tp = 0
-    try:
-        last_value_seen = None
-        next_value_seen = None
-        try:
-            # Note: we no longer pass the CO_FUTURE_* to the tokenizer,
-            # which is expected to work independently of them.  It's
-            # certainly the case for all futures in Python <= 2.7.
-            tokens = pytokenizer.generate_tokens(source_lines, flags)
-
-            newflags, last_future_import = (
-                future.add_future_flags(compile_info.parser.future_flags, tokens))
-            compile_info.last_future_import = last_future_import
-            compile_info.flags |= newflags
-            tokens_stream = iter(tokens)
-
-            for tp, value, lineno, column, line in tokens_stream:
-                next_value_seen = value
-                if parser.add_token(tp, value, lineno, column, line):
-                    break
-                last_value_seen = value
             last_value_seen = None
             next_value_seen = None
+            try:
+                # Note: we no longer pass the CO_FUTURE_* to the tokenizer,
+                # which is expected to work independently of them.  It's
+                # certainly the case for all futures in Python <= 2.7.
+                tokens = pytokenizer.generate_tokens(source_lines, flags)
 
-            if compile_info.mode == 'single':
+                newflags, last_future_import = (
+                    future.add_future_flags(self.future_flags, tokens))
+                compile_info.last_future_import = last_future_import
+                compile_info.flags |= newflags
+                tokens_stream = iter(tokens)
+
                 for tp, value, lineno, column, line in tokens_stream:
-                    if tp == Token.ENDMARKER:
+                    next_value_seen = value
+                    if self.add_token(tp, value, lineno, column, line):
                         break
-                    if tp == Token.NEWLINE:
-                        continue
+                    last_value_seen = value
+                last_value_seen = None
+                next_value_seen = None
 
-                    if tp == Token.COMMENT:
-                        for tp, _, _, _, _ in tokens_stream:
-                            if tp == Token.NEWLINE:
-                                break
-                    else:
-                        new_err = error.SyntaxError
-                        msg = ("multiple statements found while "
-                               "compiling a single statement")
-                        raise new_err(msg, lineno, column,
-                                      line, compile_info.filename)
+                if compile_info.mode == 'single':
+                    for tp, value, lineno, column, line in tokens_stream:
+                        if tp == Token.ENDMARKER:
+                            break
+                        if tp == Token.NEWLINE:
+                            continue
 
-        except error.TokenError as e:
-            e.filename = compile_info.filename
-            raise
-        except error.TokenIndentationError as e:
-            e.filename = compile_info.filename
-            raise
-        except ParseError as e:
-            # Catch parse errors, pretty them up and reraise them as a
-            # SyntaxError.
-            new_err = error.IndentationError
-            if tp == Token.INDENT:
-                msg = "unexpected indent"
-            elif e.expected == Token.INDENT:
-                msg = "expected an indented block"
-            else:
-                new_err = error.SyntaxError
-                if (last_value_seen in ('print', 'exec') and
-                        bool(next_value_seen) and
-                        next_value_seen != '('):
-                    msg = "Missing parentheses in call to '%s'" % (
-                        last_value_seen,)
+                        if tp == Token.COMMENT:
+                            for tp, _, _, _, _ in tokens_stream:
+                                if tp == Token.NEWLINE:
+                                    break
+                        else:
+                            new_err = error.SyntaxError
+                            msg = ("multiple statements found while "
+                                   "compiling a single statement")
+                            raise new_err(msg, lineno, column,
+                                          line, compile_info.filename)
+
+            except error.TokenError as e:
+                e.filename = compile_info.filename
+                raise
+            except error.TokenIndentationError as e:
+                e.filename = compile_info.filename
+                raise
+            except ParseError as e:
+                # Catch parse errors, pretty them up and reraise them as a
+                # SyntaxError.
+                new_err = error.IndentationError
+                if tp == Token.INDENT:
+                    msg = "unexpected indent"
+                elif e.expected == Token.INDENT:
+                    msg = "expected an indented block"
                 else:
-                    msg = "invalid syntax"
-            raise new_err(msg, e.lineno, e.column, e.line,
-                          compile_info.filename)
-        else:
-            tree = parser.root
-    finally:
-        # Avoid hanging onto the tree.
-        parser.root = None
-    if enc is not None:
-        compile_info.encoding = enc
-    return tree
+                    new_err = error.SyntaxError
+                    if (last_value_seen in ('print', 'exec') and
+                            bool(next_value_seen) and
+                            next_value_seen != '('):
+                        msg = "Missing parentheses in call to '%s'" % (
+                            last_value_seen,)
+                    else:
+                        msg = "invalid syntax"
+                raise new_err(msg, e.lineno, e.column, e.line,
+                              compile_info.filename)
+            else:
+                tree = self.root
+        finally:
+            # Avoid hanging onto the tree.
+            self.root = None
+        if enc is not None:
+            compile_info.encoding = enc
+        return tree
+
+
+    def parse(self, bytessrc, compile_info):
+        node = self.parse_source(bytessrc, compile_info)
+        return astbuilder.ASTBuilder(node, compile_info, self.syms).build_ast()

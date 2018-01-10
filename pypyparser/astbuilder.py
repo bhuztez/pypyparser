@@ -3,11 +3,6 @@ from .pytoken import Token
 from .error import SyntaxError
 
 
-def ast_from_node(node, compile_info, recursive_parser=None):
-    """Turn a parse tree, node, to AST."""
-    return ASTBuilder(node, compile_info, recursive_parser).build_ast()
-
-
 augassign_operator_map = {
     '+='  : ast.Add,
     '-='  : ast.Sub,
@@ -42,11 +37,12 @@ operator_map = {
 
 class ASTBuilder:
 
-    def __init__(self, n, compile_info, recursive_parser=None):
+    def __init__(self, n, compile_info, syms, recursive_parser=None):
         self.compile_info = compile_info
         self.root_node = n
+        self.syms = syms
         self.recursive_parser = recursive_parser
-        self.syms = compile_info.parser.syms
+
 
     def build_ast(self):
         """Convert an top level parse tree node into an AST mod."""

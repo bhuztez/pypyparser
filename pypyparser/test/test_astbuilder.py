@@ -3,13 +3,14 @@ import string
 import sys
 from .. import pyparse
 from ..error import SyntaxError
-from ..astbuilder import ast_from_node
 from .. import ast, consts
 from . import TestCase
 
 
 class TestAstBuilder(TestCase):
 
+    def setUp(self):
+        self.parser = pyparse.PythonParser("3.5")
 
     def get_ast(self, source, p_mode=None, flags=None):
         if p_mode is None:
@@ -17,9 +18,7 @@ class TestAstBuilder(TestCase):
         if flags is None:
             flags = consts.CO_FUTURE_WITH_STATEMENT
         info = pyparse.CompileInfo("<test>", p_mode, flags)
-        tree = pyparse.parse_source(source.encode() if isinstance(source, str) else source, info)
-        ast_node = ast_from_node(tree, info)
-        return ast_node
+        return self.parser.parse(source.encode() if isinstance(source, str) else source, info)
 
     def get_first_expr(self, source, p_mode=None, flags=None):
         mod = self.get_ast(source, p_mode, flags)
@@ -1135,9 +1134,8 @@ class TestAstBuilder(TestCase):
         sentence = u"Die Männer ärgen sich!"
         source = u"# coding: utf-7\nstuff = '%s'" % (sentence,)
         info = pyparse.CompileInfo("<test>", "exec")
-        tree = pyparse.parse_source(source.encode("utf-7"), info)
+        s = self.parser.parse(source.encode("utf-7"), info).body[0].value
         self.assertEqual(info.encoding, "utf-7")
-        s = ast_from_node(tree, info).body[0].value
         self.assertIsInstance(s, ast.Str)
         self.assertEqual(s.s, sentence)
 
@@ -1145,9 +1143,8 @@ class TestAstBuilder(TestCase):
         japan = u'日本'
         source = u"foo = '%s'" % japan
         info = pyparse.CompileInfo("<test>", "exec")
-        tree = pyparse.parse_source(source.encode("utf-8"), info)
+        s = self.parser.parse(source.encode("utf-8"), info).body[0].value
         self.assertEqual(info.encoding, "utf-8")
-        s = ast_from_node(tree, info).body[0].value
         self.assertIsInstance(s, ast.Str)
         self.assertEqual(s.s, japan)
 
@@ -1178,18 +1175,16 @@ class TestAstBuilder(TestCase):
     def test_issue3574(self):
         source = '# coding: Latin-1\nu = "Ç"\n'
         info = pyparse.CompileInfo("<test>", "exec")
-        tree = pyparse.parse_source(source.encode("Latin-1"), info)
+        s = self.parser.parse(source.encode("Latin-1"), info).body[0].value
         self.assertEqual(info.encoding, "iso-8859-1")
-        s = ast_from_node(tree, info).body[0].value
         self.assertIsInstance(s, ast.Str)
         self.assertEqual(s.s, 'Ç')
 
     def test_string_bug(self):
         source = b'# -*- encoding: utf8 -*-\nstuff = "x \xc3\xa9 \\n"\n'
         info = pyparse.CompileInfo("<test>", "exec")
-        tree = pyparse.parse_source(source, info)
+        s = self.parser.parse(source, info).body[0].value
         self.assertEqual(info.encoding, "utf8")
-        s = ast_from_node(tree, info).body[0].value
         self.assertIsInstance(s, ast.Str)
         self.assertEqual(s.s, 'x \xe9 \n')
 
@@ -1333,7 +1328,7 @@ class TestAstBuilder(TestCase):
         self.assertIsInstance(expr.left, ast.Name)
         self.assertIsInstance(expr.right, ast.Name)
         # imatmul is tested earlier search for @=
-    
+
     def test_asyncFunctionDef(self):
         mod = self.get_ast("async def f():\n await something()")
         self.assertIsInstance(mod, ast.Module)
@@ -1353,7 +1348,7 @@ class TestAstBuilder(TestCase):
         self.assertIsInstance(func, ast.Name)
         self.assertEqual(func.id, 'something')
         self.assertEqual(func.ctx, ast.Load)
-    
+
     def test_asyncFor(self):
         mod = self.get_ast("async def f():\n async for e in i: 1\n else: 2")
         self.assertIsInstance(mod, ast.Module)
@@ -1373,7 +1368,7 @@ class TestAstBuilder(TestCase):
         self.assertEqual(len(asyncfor.orelse), 1)
         self.assertIsInstance(asyncfor.orelse[0], ast.Expr)
         self.assertIsInstance(asyncfor.orelse[0].value, ast.Num)
-    
+
     def test_asyncWith(self):
         mod = self.get_ast("async def f():\n async with a as b: 1")
         self.assertIsInstance(mod, ast.Module)
@@ -1402,6 +1397,6 @@ class TestAstBuilder(TestCase):
         #                  " bytes in position 0-1: truncated \\xXX escape")
         input = "u'\\x1'"
         exc = self.assertRaises(SyntaxError, self.get_ast, input)
-        # self.assertEqual(exc.msg, 
+        # self.assertEqual(exc.msg,
         #                  "(unicode error) 'unicodeescape' codec can't decode"
         #                  " bytes in position 0-2: truncated \\xXX escape")

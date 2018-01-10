@@ -10,7 +10,7 @@ class TestFuture(TestCase):
         tokens = pytokenizer.generate_tokens(source_lines, 0)
         #
         flags, last_future_import = future.add_future_flags(
-            future.futureFlags_3_5, tokens)
+            future.FUTURE_FLAGS["3.5"], tokens)
         self.assertEqual(last_future_import, expected_last_future)
         return flags
 

@@ -28,11 +28,14 @@ class FutureFlags:
     def get_compiler_feature(self, name):
         return self.compiler_features.get(name, 0)
 
-futureFlags_2_4 = FutureFlags((2, 4, 4, 'final', 0))
-futureFlags_2_5 = FutureFlags((2, 5, 0, 'final', 0))
-futureFlags_2_7 = FutureFlags((2, 7, 0, 'final', 0))
-futureFlags_3_2 = FutureFlags((3, 2, 0, 'final', 0))
-futureFlags_3_5 = FutureFlags((3, 5, 0, 'final', 0))
+
+FUTURE_FLAGS = {
+    "2.4": FutureFlags((2, 4, 4, 'final', 0)),
+    "2.5": FutureFlags((2, 5, 0, 'final', 0)),
+    "2.7": FutureFlags((2, 7, 0, 'final', 0)),
+    "3.2": FutureFlags((3, 2, 0, 'final', 0)),
+    "3.5": FutureFlags((3, 5, 0, 'final', 0)),
+}
 
 
 class TokenIterator:
